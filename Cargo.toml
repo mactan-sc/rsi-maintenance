@@ -1,0 +1,9 @@
+[package]
+name = "rsi-maintenance"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = "0.13.1"
+iced_winit = "0.13.0"
+iced_wgpu = "0.13.5"
