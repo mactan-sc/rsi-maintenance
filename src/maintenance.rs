@@ -9,12 +9,14 @@ pub enum Message {
     Winecfg,
     Control,
     OpenCfg,
+    OpenGameDir,
 }
 
 pub fn view() -> iced::Element<'static, Message> {
     column![row![
         text("RSI Maintenance").size(24).width(iced::Length::Fill),
         button("Open config file").on_press(Message::OpenCfg),
+        button("Open game directory").on_press(Message::OpenGameDir),
         button("Winecfg").on_press(Message::Winecfg),
         button("Control").on_press(Message::Control),
         button("Back").on_press(Message::Back),

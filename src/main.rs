@@ -86,7 +86,7 @@ impl AppState {
             Screen::Maintenance => "Maintenance",
         };
 
-        format!("{screen} - Iced")
+        format!("{screen} - RSI Launcher Maintenance")
     }
 
     fn theme(&self) -> iced::Theme {
@@ -131,6 +131,10 @@ impl AppState {
                 let xdg_dirs = xdg::BaseDirectories::with_prefix("starcitizen-lug");
                 let config_path = xdg_dirs.get_config_file(Path::new("launcher.cfg"));
                 let _ = opener::open(config_path.unwrap());
+                Task::none()
+            },
+            Message::Maintenance(maintenance::Message::OpenGameDir) => {
+                let _ = opener::open(&self.config.game_path);
                 Task::none()
             },
             Message::Welcome(welcome::Message::OpenWiki) => {
