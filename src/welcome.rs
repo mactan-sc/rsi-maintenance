@@ -27,7 +27,7 @@ pub fn view(theme: &Theme) -> iced::Element<'static, Message> {
                                 .font(Font::MONOSPACE)
                                 .link(Message::OpenWiki),
                             "."
-                ],
+                ].on_link_click(|_: Message| Message::OpenWiki),
                 row![
                 button("Maintenance").on_press(Message::Maintenance),
                 button("Exit").on_press(Message::Exit)
