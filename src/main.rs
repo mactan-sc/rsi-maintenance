@@ -114,7 +114,7 @@ impl AppState {
                 Task::none()
             },
             Message::Welcome(welcome::Message::Exit) |
-            Message::Maintenance(maintenance::Message::Exit) => window::get_latest().and_then(window::close),
+            Message::Maintenance(maintenance::Message::Exit) => window::latest().and_then(window::close),
             Message::Maintenance(maintenance::Message::Back) => {
                 self.screen = Screen::Welcome;
                 Task::none()
@@ -146,14 +146,15 @@ impl AppState {
 
     fn view(&self) -> Element<Message> {
         match &self.screen {
-            Screen::Welcome => welcome::view().map(Message::Welcome),
+            Screen::Welcome => welcome::view(&self.theme()).map(Message::Welcome),
             Screen::Maintenance => maintenance::view().map(Message::Maintenance),
         }
     }
 }
 
 fn main() -> iced::Result {
-    iced::application(AppState::title, AppState::update, AppState::view)
+    iced::application(AppState::new, AppState::update, AppState::view)
+        .title(AppState::title)
         .theme(AppState::theme)
-        .run_with(AppState::new)
+        .run()
 }

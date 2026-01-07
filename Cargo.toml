@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.13.1", features = ["advanced", "debug", "tokio"] }
-iced_winit = "0.13.0"
-iced_wgpu = "0.13.5"
-opener = "0.8.1"
+iced = { version = "0.14.0", features = ["advanced", "debug", "tokio"] }
+iced_winit = "0.14.0"
+iced_wgpu = "0.14.0"
+opener = "0.8.3"
 xdg = "3.0.0"
-toml = "0.9.5"
-serde = { version = "1.0.219", features = ["derive"] }
-rfd = { version = "0.15.3", default-features = false, features = ["tokio", "xdg-portal"] }
+serde = { version = "1.0.228", features = ["derive"] }
+rfd = "0.17.1"
+toml = "0.9.10"
