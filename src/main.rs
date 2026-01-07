@@ -3,7 +3,6 @@ use std::process::Command;
 use std::path::Path;
 use serde::Serialize;
 use serde::Deserialize;
-use rfd::AsyncFileDialog;
 use iced::{
     Theme, window, Task, Element
 };
@@ -144,7 +143,7 @@ impl AppState {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         match &self.screen {
             Screen::Welcome => welcome::view(&self.theme()).map(Message::Welcome),
             Screen::Maintenance => maintenance::view().map(Message::Maintenance),

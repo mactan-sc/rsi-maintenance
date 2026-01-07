@@ -1,4 +1,4 @@
-use iced::widget::{button, column, container, row, text};
+use iced::widget::{button, column, container, text};
 
 #[derive(Debug, Clone)]
 pub enum Message {
