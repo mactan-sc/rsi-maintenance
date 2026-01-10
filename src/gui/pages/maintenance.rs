@@ -6,6 +6,7 @@ pub enum Message {
     Back,
     Winecfg,
     Control,
+    Regedit,
     OpenCfg,
     OpenGameDir,
 }
@@ -18,6 +19,7 @@ pub fn view() -> iced::Element<'static, Message> {
             button("Open game directory").on_press(Message::OpenGameDir).width(iced::Length::Fill),
             button("Winecfg").on_press(Message::Winecfg).width(iced::Length::Fill),
             button("Control").on_press(Message::Control).width(iced::Length::Fill),
+            button("Regedit").on_press(Message::Regedit).width(iced::Length::Fill),
             button("Back").on_press(Message::Back).width(iced::Length::Fill),
             button("Exit").on_press(Message::Exit).width(iced::Length::Fill)
     ].spacing(12)

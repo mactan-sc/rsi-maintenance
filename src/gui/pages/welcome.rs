@@ -13,12 +13,9 @@ pub enum Message {
 pub fn view(theme: &Theme) -> iced::Element<'static, Message> {
     let palette = theme.extended_palette();
 
-    container(
         container(
             column![
-                row![
-                    text("Greetings, Space Penguin!").size(24).width(iced::Length::Fill),
-                ],
+                text("Greetings, Space Penguin!").size(24),
                 rich_text![
                     "For help with the game, refer to the LUG org's ",
                     span("wiki")
@@ -31,11 +28,10 @@ pub fn view(theme: &Theme) -> iced::Element<'static, Message> {
                 row![
                 button("Maintenance").on_press(Message::Maintenance),
                 button("Exit").on_press(Message::Exit)
-            ].spacing(8)]
+            ].spacing(8)].align_x(iced::Alignment::Center)
         )
         .padding(16)
-    )
-    .center_x(iced::Length::Fill)
-    .center_y(iced::Length::Fill)
+        .center_x(iced::Length::Fill)
+        .center_y(iced::Length::Fill)
     .into()
 }
