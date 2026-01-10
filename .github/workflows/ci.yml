@@ -1,0 +1,15 @@
+name: CI Testing
+on:
+  schedule:
+    - cron: "0 10 * * 5" # friday at 10:00 UTC
+  push:
+      branches:
+      - main
+      paths-ignore:
+        - 'README.md'
+        - '.github/**'
+  pull_request:
+  workflow_dispatch:
+jobs:
+  ci_run:
+    uses: mactan-sc/rsi-maintenance/.github/workflows/build-artifacts.yml@main
