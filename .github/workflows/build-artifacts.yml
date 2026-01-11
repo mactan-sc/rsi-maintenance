@@ -33,7 +33,7 @@ jobs:
           mkdir -p out/rsi-maintenance/
           cp ./target/release/rsi-maintenance out/rsi-maintenance
           printf "[settings]\n" > out/rsi-maintenance/rsi_launcher.toml
-          tar -zcvf ./out/rsi-maintenance.tar.gz ./out/rsi-maintenance
+          tar -czf ./out/rsi-maintenance.tar.gz  -C "./out" "rsi-maintenance"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
