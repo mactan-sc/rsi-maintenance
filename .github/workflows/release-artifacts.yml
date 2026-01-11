@@ -3,6 +3,9 @@ name: Release Artifacts
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   parse:
     name: Parse tag
