@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::env;
 use serde::{Serialize, Deserialize};
+use xdg::BaseDirectories;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct ConfigFile{
@@ -14,14 +15,14 @@ pub struct AppConfig {
 }
 
 pub async fn get_config_async() -> AppConfig {
-    let xdg_dirs = xdg::BaseDirectories::with_prefix("starcitizen-lug");
+    let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
+    _ = xdg_dirs.create_config_directory("");
+
     let config_path = xdg_dirs
         .get_config_file(Path::new("rsi_maintenance.toml"))
         .unwrap();
 
     if !&config_path.exists() {
-
-
         let mut game_path = env::var("WINEPREFIX").unwrap_or_default();
 
         if game_path.is_empty() {
