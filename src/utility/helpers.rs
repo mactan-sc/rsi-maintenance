@@ -3,6 +3,23 @@ use std::path::Path;
 use std::env;
 use serde::{Serialize, Deserialize};
 use xdg::BaseDirectories;
+use unic_langid::LanguageIdentifier;
+
+fn parse_lang(raw: &str) -> Option<LanguageIdentifier> {
+    raw.split('@').next()?
+        .split('.').next()?
+        .replace('_', "-")
+        .parse()
+        .ok()
+}
+
+pub fn detect_lang() -> LanguageIdentifier {
+    env::var("LANG")
+        .ok()
+        .and_then(|l| parse_lang(&l))
+        .or_else(|| sys_locale::get_locale().and_then(|l| parse_lang(&l)))
+        .unwrap_or_else(|| "en-US".parse().unwrap())
+}
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 struct ConfigFile{
@@ -14,7 +31,9 @@ pub struct AppConfig {
     pub game_path: String,
 }
 
-pub async fn get_config_async() -> AppConfig {
+// Variant that accepts a custom dialog title. Useful when the title should come
+// from the application's i18n state.
+pub async fn get_config_async_with_title(title: String) -> AppConfig {
     let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
     _ = xdg_dirs.create_config_directory("");
 
@@ -26,10 +45,10 @@ pub async fn get_config_async() -> AppConfig {
         let mut game_path = env::var("WINEPREFIX").unwrap_or_default();
 
         if game_path.is_empty() {
-                let picked = rfd::AsyncFileDialog::new()
-            .set_title("Select your Star Citizen game directory")
-            .pick_folder()
-            .await;
+            let picked = rfd::AsyncFileDialog::new()
+                .set_title(&title)
+                .pick_folder()
+                .await;
 
             game_path = if let Some(folder) = picked {
                 folder.path().to_string_lossy().to_string()

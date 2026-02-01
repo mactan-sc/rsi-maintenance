@@ -18,6 +18,9 @@ pub fn run_app() -> iced::Result {
 pub struct AppState {
     screen: Screen,
     config: AppConfig,
+    i18n: I18n,
+    label_back: String,
+    label_exit: String,
 }
 
 enum Screen {
@@ -34,31 +37,57 @@ enum Message {
 
 impl Default for AppState {
     fn default() -> Self {
+        let lang = detect_lang();
+        let i18n = I18n::new(lang);
+
+        let label_back = i18n.t("Back");
+        let label_exit = i18n.t("Exit");
+
         Self {
             screen: Screen::Welcome,
             config: AppConfig::default(),
+            i18n,
+            label_back,
+            label_exit,
         }
     }
 }
 
 impl AppState {
     fn title(&self) -> String {
+        let title = self.i18n.t("RSI-Launcher-Maintenance");
+
         let screen = match self.screen {
-            Screen::Welcome => "Welcome",
-            Screen::Maintenance => "Maintenance",
+            Screen::Welcome => self.i18n.t("Welcome"),
+            Screen::Maintenance => self.i18n.t("Maintenance"),
         };
 
-        format!("{screen} - RSI Launcher Maintenance")
+        format!("{screen} - {title}")
     }
 
-    fn theme(&self) -> iced::Theme {
+    pub fn theme(&self) -> iced::Theme {
         Theme::KanagawaDragon
     }
 
+    pub fn t(&self, key: &str) -> String {
+        self.i18n.t(key)
+    }
+
+    pub fn label_back(&self) -> &str {
+        &self.label_back
+    }
+
+    pub fn label_exit(&self) -> &str {
+        &self.label_exit
+    }
+
     fn startup() -> (Self, Task<Message>) {
+        let state = Self::default();
+        let picker_title = state.t("Picker-SelectGameDir");
+
         (
-            Self::default(),
-            Task::perform(helpers::get_config_async(), Message::ConfigLoaded)
+            state,
+            Task::perform(helpers::get_config_async_with_title(picker_title), Message::ConfigLoaded)
         )
     }
 
@@ -109,8 +138,8 @@ impl AppState {
 
     fn view(&self) -> Element<'_, Message> {
         match &self.screen {
-            Screen::Welcome => welcome::view(&self.theme()).map(Message::Welcome),
-            Screen::Maintenance => maintenance::view().map(Message::Maintenance),
+            Screen::Welcome => welcome::view(self).map(Message::Welcome),
+            Screen::Maintenance => maintenance::view(self).map(Message::Maintenance),
         }
     }
 }
