@@ -35,7 +35,11 @@ impl I18n {
 
         let ftl = match ftl_content {
             Some(s) => s,
-            None => include_str!("../../assets/i18n/en-US.ftl").to_string(),
+            None => match lang.to_string().as_str() {
+                "de-DE" => include_str!("../../assets/i18n/de_DE.ftl").to_string(),
+                "fr-FR" => include_str!("../../assets/i18n/fr_FR.ftl").to_string(),
+                _ => include_str!("../../assets/i18n/en-US.ftl").to_string(),
+            },
         };
 
         let resource = FluentResource::try_new(ftl).expect("Invalid FTL");
