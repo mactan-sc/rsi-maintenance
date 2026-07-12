@@ -27,3 +27,9 @@ Control = Control
 Regedit = Regedit
 
 Picker-SelectGameDir = Wählen Sie Ihr Star Citizen-Spielverzeichnis aus
+
+Run-Launcher = Launcher starten
+Run-Launcher-Description = Installieren Sie den RSI-Launcher bei Bedarf zuerst und starten Sie ihn danach von hier aus.
+Install-Launcher = Launcher installieren
+Cancel = Abbrechen
+Done = Fertig

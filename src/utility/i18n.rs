@@ -1,7 +1,7 @@
 use fluent_bundle::{FluentArgs, FluentBundle, FluentResource};
-use unic_langid::LanguageIdentifier;
 use std::fs;
 use std::path::Path;
+use unic_langid::LanguageIdentifier;
 
 pub struct I18n {
     bundle: FluentBundle<FluentResource>,
@@ -24,7 +24,9 @@ impl I18n {
 
         let mut ftl_content = None;
         for cand in candidates {
-            let path = Path::new("assets").join("i18n").join(format!("{}.ftl", cand));
+            let path = Path::new("assets")
+                .join("i18n")
+                .join(format!("{}.ftl", cand));
             if path.exists() {
                 if let Ok(s) = fs::read_to_string(&path) {
                     ftl_content = Some(s);
@@ -36,8 +38,12 @@ impl I18n {
         let ftl = match ftl_content {
             Some(s) => s,
             None => match lang.to_string().as_str() {
-                "de-DE" => include_str!("../../assets/i18n/de_DE.ftl").to_string(),
-                "fr-FR" => include_str!("../../assets/i18n/fr_FR.ftl").to_string(),
+                "de-DE" => {
+                    include_str!("../../assets/i18n/de_DE.ftl").to_string()
+                }
+                "fr-FR" => {
+                    include_str!("../../assets/i18n/fr_FR.ftl").to_string()
+                }
                 _ => include_str!("../../assets/i18n/en-US.ftl").to_string(),
             },
         };

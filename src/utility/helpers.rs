@@ -1,13 +1,16 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::path::Path;
-use std::env;
-use serde::{Serialize, Deserialize};
-use xdg::BaseDirectories;
 use unic_langid::LanguageIdentifier;
+use xdg::BaseDirectories;
 
 fn parse_lang(raw: &str) -> Option<LanguageIdentifier> {
-    raw.split('@').next()?
-        .split('.').next()?
+    raw.split('@')
+        .next()?
+        .split('.')
+        .next()?
         .replace('_', "-")
         .parse()
         .ok()
@@ -22,8 +25,37 @@ pub fn detect_lang() -> LanguageIdentifier {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
-struct ConfigFile{
+struct ConfigFile {
     settings: AppConfig,
+    #[serde(default)]
+    environment: HashMap<String, String>,
+}
+
+fn default_environment() -> HashMap<String, String> {
+    HashMap::from([
+        ("__GL_SHADER_DISK_CACHE".to_string(), "1".to_string()),
+        (
+            "__GL_SHADER_DISK_CACHE_SIZE".to_string(),
+            "10737418240".to_string(),
+        ),
+        (
+            "__GL_SHADER_DISK_CACHE_SKIP_CLEANUP".to_string(),
+            "1".to_string(),
+        ),
+        ("MESA_SHADER_CACHE_MAX_SIZE".to_string(), "10G".to_string()),
+        ("STEAM_LINUX_RUNTIME_LOG".to_string(), "0".to_string()),
+        ("STEAM_LINUX_RUNTIME_VERBOSE".to_string(), "0".to_string()),
+        ("PROTON_LOG".to_string(), "0".to_string()),
+        ("MANGOHUD".to_string(), "0".to_string()),
+        ("PROTON_ENABLE_WAYLAND".to_string(), "0".to_string()),
+    ])
+}
+
+fn default_config(game_path: String) -> ConfigFile {
+    ConfigFile {
+        settings: AppConfig { game_path },
+        environment: default_environment(),
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -31,11 +63,86 @@ pub struct AppConfig {
     pub game_path: String,
 }
 
+pub fn apply_config_to_environment(
+    config: &AppConfig,
+    environment: &HashMap<String, String>,
+) {
+    for (key, value) in environment {
+        if !value.is_empty() {
+            env::set_var(key, value);
+        }
+    }
+
+    if !config.game_path.is_empty() {
+        env::set_var("WINEPREFIX", &config.game_path);
+    }
+}
+
+pub fn load_environment_from_current_process() {
+    for (key, value) in env::vars() {
+        if key.starts_with("RSI_")
+            || key.starts_with("WINE")
+            || key.starts_with("PROTON")
+        {
+            env::set_var(&key, &value);
+        }
+    }
+}
+
 // Variant that accepts a custom dialog title. Useful when the title should come
 // from the application's i18n state.
+pub fn load_config_without_prompt() -> AppConfig {
+    let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
+    _ = xdg_dirs.create_config_directory("");
+
+    load_environment_from_current_process();
+
+    let config_path = xdg_dirs
+        .get_config_file(Path::new("rsi_maintenance.toml"))
+        .unwrap();
+
+    if !&config_path.exists() {
+        let game_path = env::var("WINEPREFIX").unwrap_or_default();
+
+        let default_config = default_config(game_path);
+
+        let toml_str = toml::to_string(&default_config)
+            .expect("Failed to serialize default config");
+        fs::write(&config_path, toml_str)
+            .expect("Failed to write default config file");
+        return default_config.settings;
+    }
+
+    let toml_str = fs::read_to_string(&config_path)
+        .expect("Failed to read rsi_maintenance.toml");
+    let config: ConfigFile = toml::from_str(&toml_str)
+        .expect("Failed to parse rsi_maintenance.toml");
+
+    apply_config_to_environment(&config.settings, &config.environment);
+    config.settings
+}
+
+pub fn should_run_headless(args: &[String]) -> bool {
+    args.iter().any(|arg| arg == "--run")
+}
+
+pub fn run_launcher_headless() -> Result<(), String> {
+    let config = load_config_without_prompt();
+    let prefix = crate::runner::prefix_path_from_config(&config.game_path);
+
+    let runtime = tokio::runtime::Runtime::new()
+        .map_err(|err| format!("Failed to initialize runtime: {err}"))?;
+
+    runtime.block_on(async move {
+        crate::runner::run_installed_launcher(prefix).await
+    })
+}
+
 pub async fn get_config_async_with_title(title: String) -> AppConfig {
     let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
     _ = xdg_dirs.create_config_directory("");
+
+    load_environment_from_current_process();
 
     let config_path = xdg_dirs
         .get_config_file(Path::new("rsi_maintenance.toml"))
@@ -57,12 +164,7 @@ pub async fn get_config_async_with_title(title: String) -> AppConfig {
             };
         }
 
-        let default_config = ConfigFile {
-            settings: AppConfig {
-                game_path,
-                ..Default::default()
-            },
-        };
+        let default_config = default_config(game_path);
 
         let toml_str = toml::to_string(&default_config)
             .expect("Failed to serialize default config");
@@ -76,5 +178,6 @@ pub async fn get_config_async_with_title(title: String) -> AppConfig {
     let config: ConfigFile = toml::from_str(&toml_str)
         .expect("Failed to parse rsi_maintenance.toml");
 
+    apply_config_to_environment(&config.settings, &config.environment);
     config.settings
 }
