@@ -41,12 +41,13 @@ pub async fn install_launcher_only(
         return Ok(());
     }
 
+    create_live_marker(&prefix_path).await?;
+
     let version = fetch_latest_version().await?;
     let installer_path =
         download_installer(&version, &prefix_path, progress_state.clone())
             .await?;
     install_launcher(&installer_path).await?;
-    create_live_marker(&prefix_path).await?;
     Ok(())
 }
 
