@@ -123,7 +123,11 @@ pub fn load_config_without_prompt() -> AppConfig {
 }
 
 pub fn should_run_headless(args: &[String]) -> bool {
-    args.iter().any(|arg| arg == "--run")
+    let config = load_config_without_prompt();
+    let prefix = crate::runner::prefix_path_from_config(&config.game_path);
+    let launcher_path = crate::runner::launcher_exe_path(&prefix);
+
+    args.iter().any(|arg| arg == "--run") && launcher_path.exists()
 }
 
 pub fn run_launcher_headless() -> Result<(), String> {
