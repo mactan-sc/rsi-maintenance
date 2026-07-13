@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap};
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -28,11 +28,11 @@ pub fn detect_lang() -> LanguageIdentifier {
 struct ConfigFile {
     settings: AppConfig,
     #[serde(default)]
-    environment: HashMap<String, String>,
+    environment: BTreeMap<String, String>,
 }
 
-fn default_environment() -> HashMap<String, String> {
-    HashMap::from([
+fn default_environment() -> BTreeMap<String, String> {
+    BTreeMap::from([
         ("__GL_SHADER_DISK_CACHE".to_string(), "1".to_string()),
         (
             "__GL_SHADER_DISK_CACHE_SIZE".to_string(),
@@ -48,6 +48,7 @@ fn default_environment() -> HashMap<String, String> {
         ("PROTON_LOG".to_string(), "0".to_string()),
         ("MANGOHUD".to_string(), "0".to_string()),
         ("PROTON_ENABLE_WAYLAND".to_string(), "0".to_string()),
+        ("MANGOHUD_CONFIG".to_string(), "blacklist=rsi-maintenance".to_string()),
     ])
 }
 
@@ -65,7 +66,7 @@ pub struct AppConfig {
 
 pub fn apply_config_to_environment(
     config: &AppConfig,
-    environment: &HashMap<String, String>,
+    environment: &BTreeMap<String, String>,
 ) {
     for (key, value) in environment {
         if !value.is_empty() {
