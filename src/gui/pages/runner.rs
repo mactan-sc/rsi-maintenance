@@ -1,6 +1,6 @@
 use crate::utility::*;
 use iced::{
-    widget::{button, column, container, progress_bar, text},
+    widget::{button, column, container, text},
     Alignment, Element, Length,
 };
 use std::sync::OnceLock;
@@ -59,8 +59,8 @@ pub fn view<'a>(
     .spacing(12)
     .width(Length::Fill);
 
-    if let Some(progress_value) = state.progress_value() {
-        content = content.push(progress_bar(0.0..=1.0, progress_value));
+    if let Some(pb) = progress_bar_widget(state.progress_mode()) {
+        content = content.push(pb);
     }
 
     if let Some(error) = state.error_message() {

@@ -58,13 +58,6 @@ impl Default for RunnerState {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum ProgressMode {
-    None,
-    Determinate(f32),
-    Pulse,
-}
-
 #[derive(Debug, Clone)]
 pub enum RunnerStatus {
     Idle,
