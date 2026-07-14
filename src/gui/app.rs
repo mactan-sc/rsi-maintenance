@@ -1,8 +1,6 @@
-use iced::{time, window, Element, Subscription, Task, Theme};
+use iced::{window, Element, Subscription, Task, Theme};
 use std::path::Path;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 use crate::gui::pages::*;
 use crate::runner as launcher_runner;
@@ -37,7 +35,9 @@ enum Message {
     Maintenance(maintenance::Message),
     Runner(runner::Message),
     ConfigLoaded(AppConfig),
-    ProgressTick,
+    // Launcher version has been resolved; ready to start download.
+    VersionFetched(Result<String, String>),
+    // The background install / run-launcher operation finished.
     RunnerFinished(Result<(), String>),
 }
 
@@ -45,7 +45,8 @@ enum Message {
 pub struct RunnerState {
     pub status: RunnerStatus,
     pub installed: bool,
-    pub progress_state: Arc<Mutex<Option<f32>>>,
+    // Active download widget + its progress tracker.
+    pub download: Option<DownloadProgress>,
 }
 
 impl Default for RunnerState {
@@ -53,7 +54,7 @@ impl Default for RunnerState {
         Self {
             status: RunnerStatus::default(),
             installed: false,
-            progress_state: Arc::new(Mutex::new(None)),
+            download: None,
         }
     }
 }
@@ -80,7 +81,7 @@ impl RunnerState {
         Self {
             status,
             installed,
-            progress_state: Arc::new(Mutex::new(None)),
+            download: None,
         }
     }
 
@@ -104,9 +105,7 @@ impl RunnerState {
 
     pub fn progress_mode(&self) -> ProgressMode {
         match &self.status {
-            RunnerStatus::Downloading { progress } => {
-                ProgressMode::Determinate((*progress).clamp(0.0, 1.0))
-            }
+            RunnerStatus::Downloading { .. } => ProgressMode::Pulse,
             RunnerStatus::FetchingVersion
             | RunnerStatus::Installing
             | RunnerStatus::Launching => ProgressMode::Pulse,
@@ -116,12 +115,9 @@ impl RunnerState {
         }
     }
 
-    pub fn progress_value(&self) -> Option<f32> {
-        match self.progress_mode() {
-            ProgressMode::None => None,
-            ProgressMode::Determinate(value) => Some(value),
-            ProgressMode::Pulse => Some(0.5),
-        }
+    // Active download progress tracker, if any.
+    pub fn download_progress(&self) -> Option<&DownloadProgress> {
+        self.download.as_ref()
     }
 
     pub fn error_message(&self) -> Option<String> {
@@ -207,20 +203,8 @@ impl AppState {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if matches!(&self.screen, Screen::Runner)
-            && matches!(
-                self.runner_state.status,
-                RunnerStatus::FetchingVersion
-                    | RunnerStatus::Downloading { .. }
-                    | RunnerStatus::Installing
-                    | RunnerStatus::Launching
-            )
-        {
-            time::every(Duration::from_millis(100))
-                .map(|_| Message::ProgressTick)
-        } else {
-            Subscription::none()
-        }
+        // No polling needed — download progress arrives via iced Tasks.
+        Subscription::none()
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -229,19 +213,39 @@ impl AppState {
                 self.config = config;
                 Task::none()
             }
-            Message::ProgressTick => {
-                if let RunnerStatus::Downloading { .. } =
-                    self.runner_state.status
-                {
-                    let progress = self
-                        .runner_state
-                        .progress_state
-                        .lock()
-                        .unwrap_or_else(|err| err.into_inner())
-                        .unwrap_or(0.0);
-                    self.runner_state.status =
-                        RunnerStatus::Downloading { progress };
-                }
+            Message::VersionFetched(Ok(version)) => {
+                let prefix = launcher_runner::prefix_path_from_config(
+                    &self.config.game_path,
+                );
+                let installer_name =
+                    format!("RSI-Launcher-setup-{version}.exe");
+                let save_path = prefix.join(&installer_name);
+                let url = launcher_runner::installer_url(&version);
+
+                let mut dl = DownloadProgress::new(url, Some(save_path));
+                let task = dl.start();
+                self.runner_state.download = Some(dl);
+                self.runner_state.status =
+                    RunnerStatus::Downloading { progress: 0.0 };
+
+                task.map(|update| {
+                    Message::Runner(runner::Message::DownloadUpdate(update))
+                })
+            }
+            Message::VersionFetched(Err(err)) => {
+                self.runner_state.status =
+                    RunnerStatus::Failed(format!(
+                        "Version fetch failed: {err}"
+                    ));
+                Task::none()
+            }
+            Message::RunnerFinished(result) => {
+                self.runner_state = match result {
+                    Ok(()) => RunnerState::new(RunnerStatus::Complete, true),
+                    Err(err) => {
+                        RunnerState::new(RunnerStatus::Failed(err), false)
+                    }
+                };
                 Task::none()
             }
             Message::Welcome(welcome::Message::Maintenance) => {
@@ -253,21 +257,17 @@ impl AppState {
                     &self.config.game_path,
                 );
                 self.screen = Screen::Runner;
-                let progress_state = Arc::new(Mutex::new(None));
                 self.runner_state = RunnerState::new(
-                    RunnerStatus::Downloading { progress: 0.0 },
+                    RunnerStatus::FetchingVersion,
                     launcher_runner::launcher_installed(&prefix),
                 );
-                self.runner_state.progress_state = progress_state.clone();
+
+                // Step 1: fetch the latest version, then start download.
                 Task::perform(
-                    async move {
-                        launcher_runner::install_launcher_only(
-                            prefix,
-                            progress_state,
-                        )
-                        .await
-                    },
-                    Message::RunnerFinished,
+                    launcher_runner::fetch_latest_version(),
+                    |result| Message::VersionFetched(
+                        result.map_err(|e| e),
+                    ),
                 )
             }
             Message::Welcome(welcome::Message::RunLauncher) => {
@@ -322,38 +322,16 @@ impl AppState {
                 let _ = opener::open("https://starcitizen-lug.github.io");
                 Task::none()
             }
-            Message::RunnerFinished(result) => {
-                self.runner_state = match result {
-                    Ok(()) => RunnerState::new(RunnerStatus::Complete, true),
-                    Err(err) => {
-                        RunnerState::new(RunnerStatus::Failed(err), false)
-                    }
-                };
-                Task::none()
-            }
             Message::Runner(runner::Message::InstallLauncher) => {
                 self.runner_state = RunnerState::new(
-                    RunnerStatus::Downloading { progress: 0.0 },
+                    RunnerStatus::FetchingVersion,
                     false,
                 );
-                let prefix = launcher_runner::prefix_path_from_config(
-                    &self.config.game_path,
-                );
-                let progress_state = Arc::new(Mutex::new(None));
-                self.runner_state = RunnerState::new(
-                    RunnerStatus::Downloading { progress: 0.0 },
-                    false,
-                );
-                self.runner_state.progress_state = progress_state.clone();
                 Task::perform(
-                    async move {
-                        launcher_runner::install_launcher_only(
-                            prefix,
-                            progress_state,
-                        )
-                        .await
-                    },
-                    Message::RunnerFinished,
+                    launcher_runner::fetch_latest_version(),
+                    |result| Message::VersionFetched(
+                        result.map_err(|e| e),
+                    ),
                 )
             }
             Message::Runner(runner::Message::RunLauncher) => {
@@ -381,8 +359,48 @@ impl AppState {
                 self.runner_state = RunnerState::default();
                 Task::none()
             }
-            Message::Runner(runner::Message::Progress(_)) => Task::none(),
-            Message::Runner(runner::Message::Error(_)) => Task::none(),
+            Message::Runner(runner::Message::DownloadUpdate(update)) => {
+                if let Some(ref mut dl) = self.runner_state.download {
+                    dl.update(update.clone());
+                    // Sync progress into RunnerStatus for status_label etc.
+                    if let DownloadUpdate::Progress(p) = update {
+                        self.runner_state.status =
+                            RunnerStatus::Downloading { progress: p };
+                    }
+                    // Download finished → proceed to install.
+                    if let DownloadUpdate::Finished(result) = update {
+                        self.runner_state.download = None;
+                        match result {
+                            Ok(()) => {
+                                self.runner_state.status =
+                                    RunnerStatus::Installing;
+                                let prefix =
+                                    launcher_runner::prefix_path_from_config(
+                                        &self.config.game_path,
+                                    );
+                                return Task::perform(
+                                    async move {
+                                        // Create LIVE marker so the
+                                        // launcher recognises the install.
+                                        let _ = launcher_runner::create_live_marker(&prefix).await;
+                                        let installer_path = launcher_runner::find_installer_exe(&prefix)
+                                            .ok_or_else(|| "Installer file not found after download".to_string())?;
+                                        launcher_runner::install_launcher(&installer_path).await
+                                    },
+                                    Message::RunnerFinished,
+                                );
+                            }
+                            Err(err) => {
+                                self.runner_state.status =
+                                    RunnerStatus::Failed(err);
+                            }
+                        }
+                    }
+                }
+                Task::none()
+            }
+            Message::Runner(runner::Message::Progress(_))
+            | Message::Runner(runner::Message::Error(_)) => Task::none(),
         }
     }
 

@@ -18,3 +18,4 @@ unic-langid = "0.9"
 fluent-langneg = "0.14.2"
 sys-locale = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread"] }
+maintenance-widgets = { path = "widgets" }

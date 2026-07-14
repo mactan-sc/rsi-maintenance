@@ -2,7 +2,6 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::{Arc, Mutex};
 
 pub fn launcher_exe_path(prefix_path: &Path) -> PathBuf {
     prefix_path.join("drive_c/Program Files/Roberts Space Industries/RSI Launcher/RSI Launcher.exe")
@@ -30,25 +29,19 @@ pub fn launcher_installed(prefix_path: &Path) -> bool {
     launcher_exe_path(prefix_path).exists()
 }
 
-pub async fn install_launcher_only(
-    prefix_path: PathBuf,
-    progress_state: Arc<Mutex<Option<f32>>>,
-) -> Result<(), String> {
-    let prefix_path = prefix_path.clone();
-    let launcher_path = launcher_exe_path(&prefix_path);
-
-    if launcher_path.exists() {
-        return Ok(());
-    }
-
-    create_live_marker(&prefix_path).await?;
-
-    let version = fetch_latest_version().await?;
-    let installer_path =
-        download_installer(&version, &prefix_path, progress_state.clone())
-            .await?;
-    install_launcher(&installer_path).await?;
-    Ok(())
+// Locate a previously downloaded installer `.exe` in `prefix_path`.
+// Matches any file starting with `RSI-Launcher-setup-`.
+pub fn find_installer_exe(prefix_path: &Path) -> Option<PathBuf> {
+    std::fs::read_dir(prefix_path)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .find(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .map(|n| n.starts_with("RSI-Launcher-setup-"))
+                .unwrap_or(false)
+        })
 }
 
 pub async fn run_installed_launcher(
@@ -88,63 +81,11 @@ pub async fn fetch_latest_version() -> Result<String, String> {
     })
 }
 
-pub async fn download_installer(
-    version: &str,
-    prefix_path: &Path,
-    progress_state: Arc<Mutex<Option<f32>>>,
-) -> Result<PathBuf, String> {
-    let installer_name = format!("RSI-Launcher-setup-{version}.exe");
-    let installer_path = prefix_path.join(&installer_name);
-    let installer_url = installer_url(version);
-
-    let response = reqwest::get(&installer_url)
-        .await
-        .map_err(|err| format!("Failed to start launcher download: {err}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download launcher installer from {installer_url}"
-        ));
-    }
-
-    let total = response.content_length().unwrap_or_default();
-    let mut downloaded = 0u64;
-    let mut bytes = Vec::new();
-
-    let mut stream = response.bytes().await.map_err(|err| {
-        format!("Failed to read launcher installer bytes: {err}")
-    })?;
-
-    while !stream.is_empty() {
-        let chunk = stream.split_to(std::cmp::min(stream.len(), 8192));
-        downloaded += chunk.len() as u64;
-        bytes.extend_from_slice(&chunk);
-
-        if total > 0 {
-            let progress =
-                (downloaded as f64 / total as f64).clamp(0.0, 1.0) as f32;
-            let mut guard =
-                progress_state.lock().unwrap_or_else(|err| err.into_inner());
-            *guard = Some(progress);
-        }
-    }
-
-    fs::write(&installer_path, bytes).map_err(|err| {
-        format!("Failed to write launcher installer to disk: {err}")
-    })?;
-
-    let mut guard =
-        progress_state.lock().unwrap_or_else(|err| err.into_inner());
-    *guard = Some(1.0);
-
-    Ok(installer_path)
-}
-
 pub async fn install_launcher(installer_path: &Path) -> Result<(), String> {
-    let installer_path = installer_path.to_string_lossy().to_string();
+    let installer_path_str = installer_path.to_string_lossy().to_string();
 
     let output = Command::new("umu-run")
-        .arg(&installer_path)
+        .arg(&installer_path_str)
         .arg("/S")
         .env("PROTONPATH", "GE-Proton")
         .env("WINE_NO_PRIV_ELEVATION", "1")

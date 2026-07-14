@@ -42,6 +42,8 @@ pub enum Message {
     RunLauncher,
     Progress(f32),
     Error(String),
+    // Forwarded from the download widget's task.
+    DownloadUpdate(crate::utility::DownloadUpdate),
 }
 
 pub fn view<'a>(
@@ -50,7 +52,6 @@ pub fn view<'a>(
     static PAGE: OnceLock<RunnerPage> = OnceLock::new();
     let page = PAGE.get_or_init(|| RunnerPage::default());
 
-    let _progress_mode = state.progress_mode();
     let mut content = column![
         text(page.title).size(24),
         text(page.description).width(Length::Fill),
@@ -59,7 +60,10 @@ pub fn view<'a>(
     .spacing(12)
     .width(Length::Fill);
 
-    if let Some(pb) = progress_bar_widget(state.progress_mode()) {
+    // If a download widget is active, show it instead of the generic indicator.
+    if let Some(dl) = state.download_progress() {
+        content = content.push(dl.view().map(Message::DownloadUpdate));
+    } else if let Some(pb) = progress_bar_widget(state.progress_mode()) {
         content = content.push(pb);
     }
 
