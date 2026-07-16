@@ -1,10 +1,10 @@
 use iced::{window, Element, Subscription, Task, Theme};
-use std::path::Path;
 use std::process::Command;
 
 use crate::gui::pages::*;
 use crate::runner as launcher_runner;
 use crate::utility::*;
+use iced::widget::text;
 
 pub fn run_app() -> iced::Result {
     iced::application(AppState::startup, AppState::update, AppState::view)
@@ -21,12 +21,14 @@ pub struct AppState {
     label_back: String,
     label_exit: String,
     runner_state: RunnerState,
+    config_editor_state: Option<config_editor::State>,
 }
 
 enum Screen {
     Welcome,
     Maintenance,
     Runner,
+    ConfigEditor,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,7 @@ enum Message {
     Welcome(welcome::Message),
     Maintenance(maintenance::Message),
     Runner(runner::Message),
+    ConfigEditor(config_editor::Message),
     ConfigLoaded(AppConfig),
     // Launcher version has been resolved; ready to start download.
     VersionFetched(Result<String, String>),
@@ -150,6 +153,7 @@ impl Default for AppState {
             label_back,
             label_exit,
             runner_state: RunnerState::default(),
+            config_editor_state: None,
         }
     }
 }
@@ -162,6 +166,7 @@ impl AppState {
             Screen::Welcome => self.i18n.t("Welcome"),
             Screen::Maintenance => self.i18n.t("Maintenance"),
             Screen::Runner => self.i18n.t("Run-Launcher"),
+            Screen::ConfigEditor => self.i18n.t("Config-Editor"),
         };
 
         format!("{screen} - {title}")
@@ -294,6 +299,54 @@ impl AppState {
                 self.screen = Screen::Welcome;
                 Task::none()
             }
+            Message::ConfigEditor(config_editor::Message::Back) => {
+                self.config_editor_state = None;
+                self.screen = Screen::Maintenance;
+                Task::none()
+            }
+            Message::ConfigEditor(
+                config_editor::Message::AddEntry,
+            ) => {
+                if let Some(ref mut state) = self.config_editor_state {
+                    state.entries.push(config_editor::Entry {
+                        key: String::new(),
+                        value: String::new(),
+                    });
+                    state.save();
+                }
+                Task::none()
+            }
+            Message::ConfigEditor(
+                config_editor::Message::RemoveEntry(idx),
+            ) => {
+                if let Some(ref mut state) = self.config_editor_state {
+                    state.entries.remove(idx);
+                    state.save();
+                }
+                Task::none()
+            }
+            Message::ConfigEditor(
+                config_editor::Message::EditKey(idx, val),
+            ) => {
+                if let Some(ref mut state) = self.config_editor_state {
+                    if let Some(entry) = state.entries.get_mut(idx) {
+                        entry.key = val;
+                    }
+                    state.save();
+                }
+                Task::none()
+            }
+            Message::ConfigEditor(
+                config_editor::Message::EditValue(idx, val),
+            ) => {
+                if let Some(ref mut state) = self.config_editor_state {
+                    if let Some(entry) = state.entries.get_mut(idx) {
+                        entry.value = val;
+                    }
+                    state.save();
+                }
+                Task::none()
+            }
             Message::Maintenance(maintenance::Message::Winecfg) => {
                 let _ = Command::new("umu-run").arg("winecfg").spawn();
                 Task::none()
@@ -307,11 +360,9 @@ impl AppState {
                 Task::none()
             }
             Message::Maintenance(maintenance::Message::OpenCfg) => {
-                let xdg_dirs =
-                    xdg::BaseDirectories::with_prefix("starcitizen-lug");
-                let config_path =
-                    xdg_dirs.get_config_file(Path::new("rsi_maintenance.toml"));
-                let _ = opener::open(config_path.unwrap());
+                self.config_editor_state =
+                    Some(config_editor::State::new());
+                self.screen = Screen::ConfigEditor;
                 Task::none()
             }
             Message::Maintenance(maintenance::Message::OpenGameDir) => {
@@ -412,6 +463,13 @@ impl AppState {
             }
             Screen::Runner => {
                 runner::view(&self.runner_state).map(Message::Runner)
+            }
+            Screen::ConfigEditor => {
+                if let Some(ref state) = self.config_editor_state {
+                    config_editor::view(state).map(Message::ConfigEditor)
+                } else {
+                    text("Loading...").into()
+                }
             }
         }
     }

@@ -33,3 +33,8 @@ Run-Launcher-Description = Installieren Sie den RSI-Launcher bei Bedarf zuerst u
 Install-Launcher = Launcher installieren
 Cancel = Abbrechen
 Done = Fertig
+
+Config-Editor = Konfigurationseditor
+Edit-Configuration = Konfiguration bearbeiten
+Add-Entry = Eintrag hinzufügen
+Save = Speichern

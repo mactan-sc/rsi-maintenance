@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 
 pub struct Maintenance {
     pub rsi_maintenance: &'static str,
-    pub open_config_file: &'static str,
+    pub edit_config: &'static str,
     pub open_game_directory: &'static str,
     pub winecfg: &'static str,
     pub control: &'static str,
@@ -18,8 +18,8 @@ impl Default for Maintenance {
 
         let rsi_maintenance =
             Box::leak(i18n.t("RSI-Maintenance").into_boxed_str());
-        let open_config_file =
-            Box::leak(i18n.t("Open-config-file").into_boxed_str());
+        let edit_config =
+            Box::leak(i18n.t("Edit-Configuration").into_boxed_str());
         let open_game_directory =
             Box::leak(i18n.t("Open-game-directory").into_boxed_str());
         let winecfg = Box::leak(i18n.t("Winecfg").into_boxed_str());
@@ -28,7 +28,7 @@ impl Default for Maintenance {
 
         Self {
             rsi_maintenance,
-            open_config_file,
+            edit_config,
             open_game_directory,
             winecfg,
             control,
@@ -57,7 +57,7 @@ pub fn view(app: &crate::gui::app::AppState) -> iced::Element<'_, Message> {
             text(maintenance.rsi_maintenance)
                 .size(24)
                 .width(iced::Length::Fill),
-            button(maintenance.open_config_file)
+            button(maintenance.edit_config)
                 .on_press(Message::OpenCfg)
                 .width(iced::Length::Fill),
             button(maintenance.open_game_directory)

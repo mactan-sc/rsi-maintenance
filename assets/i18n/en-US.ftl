@@ -33,3 +33,8 @@ Run-Launcher-Description = Install the RSI Launcher first if needed, then launch
 Install-Launcher = Install Launcher
 Cancel = Cancel
 Done = Done
+
+Config-Editor = Configuration Editor
+Edit-Configuration = Edit Configuration
+Add-Entry = Add Entry
+Save = Save

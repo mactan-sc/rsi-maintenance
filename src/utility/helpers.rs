@@ -24,11 +24,11 @@ pub fn detect_lang() -> LanguageIdentifier {
         .unwrap_or_else(|| "en-US".parse().unwrap())
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-struct ConfigFile {
-    settings: AppConfig,
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+pub struct ConfigFile {
+    pub settings: AppConfig,
     #[serde(default)]
-    environment: BTreeMap<String, String>,
+    pub environment: BTreeMap<String, String>,
 }
 
 fn default_environment() -> BTreeMap<String, String> {
@@ -121,6 +121,40 @@ pub fn load_config_without_prompt() -> AppConfig {
 
     apply_config_to_environment(&config.settings, &config.environment);
     config.settings
+}
+
+// Load the full config file (settings + environment map)
+pub fn load_full_config() -> ConfigFile {
+    let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
+    _ = xdg_dirs.create_config_directory("");
+
+    let config_path = xdg_dirs
+        .get_config_file(Path::new("rsi_maintenance.toml"))
+        .unwrap();
+
+    if !config_path.exists() {
+        let game_path = env::var("WINEPREFIX").unwrap_or_default();
+        return default_config(game_path);
+    }
+
+    let toml_str = fs::read_to_string(&config_path)
+        .expect("Failed to read rsi_maintenance.toml");
+    toml::from_str(&toml_str).expect("Failed to parse rsi_maintenance.toml")
+}
+
+// Save the config file
+pub fn save_full_config(config: &ConfigFile) {
+    let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
+    _ = xdg_dirs.create_config_directory("");
+
+    let config_path = xdg_dirs
+        .get_config_file(Path::new("rsi_maintenance.toml"))
+        .unwrap();
+
+    let toml_str =
+        toml::to_string_pretty(config).expect("Failed to serialize config");
+    fs::write(&config_path, toml_str)
+        .expect("Failed to write rsi_maintenance.toml");
 }
 
 pub fn should_run_headless(args: &[String]) -> bool {

@@ -33,3 +33,8 @@ Run-Launcher-Description = 如有需要请先安装 RSI 启动器，然后从此
 Install-Launcher = 安装启动器
 Cancel = 取消
 Done = 完成
+
+Config-Editor = 配置编辑器
+Edit-Configuration = 编辑配置
+Add-Entry = 添加条目
+Save = 保存
