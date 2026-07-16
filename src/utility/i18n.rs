@@ -44,6 +44,12 @@ impl I18n {
                 "fr-FR" => {
                     include_str!("../../assets/i18n/fr_FR.ftl").to_string()
                 }
+                "zh-CN" => {
+                    include_str!("../../assets/i18n/zh_CN.ftl").to_string()
+                }
+                "zh-TW" => {
+                    include_str!("../../assets/i18n/zh_TW.ftl").to_string()
+                }
                 _ => include_str!("../../assets/i18n/en-US.ftl").to_string(),
             },
         };
