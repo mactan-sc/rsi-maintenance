@@ -42,6 +42,8 @@ enum Message {
     VersionFetched(Result<String, String>),
     // The background install / run-launcher operation finished.
     RunnerFinished(Result<(), String>),
+    // Game path resolved from dialog; proceed with install.
+    GamePathResolved(String),
 }
 
 #[derive(Debug, Clone)]
@@ -218,6 +220,35 @@ impl AppState {
                 self.config = config;
                 Task::none()
             }
+            Message::GamePathResolved(game_path) => {
+                if !game_path.is_empty() {
+                    self.config.game_path = game_path.clone();
+                    // Persist
+                    let mut config: ConfigFile =
+                        helpers::load_full_config();
+                    config.settings.game_path = game_path;
+                    helpers::save_full_config(&config);
+                    helpers::apply_config_to_environment(
+                        &config.settings,
+                        &config.environment,
+                    );
+                }
+
+                // Proceed with install flow.
+                let prefix = launcher_runner::prefix_path_from_config(
+                    &self.config.game_path,
+                );
+                self.runner_state = RunnerState::new(
+                    RunnerStatus::FetchingVersion,
+                    launcher_runner::launcher_installed(&prefix),
+                );
+                Task::perform(
+                    launcher_runner::fetch_latest_version(),
+                    |result| {
+                        Message::VersionFetched(result.map_err(|e| e))
+                    },
+                )
+            }
             Message::VersionFetched(Ok(version)) => {
                 let prefix = launcher_runner::prefix_path_from_config(
                     &self.config.game_path,
@@ -258,6 +289,15 @@ impl AppState {
                 Task::none()
             }
             Message::Welcome(welcome::Message::InstallLauncher) => {
+                if self.config.game_path.is_empty() {
+                    let title = self.t("Picker-SelectGameDir");
+                    self.screen = Screen::Runner;
+                    return Task::perform(
+                        async move { helpers::ensure_game_path(&title).await },
+                        Message::GamePathResolved,
+                    );
+                }
+
                 let prefix = launcher_runner::prefix_path_from_config(
                     &self.config.game_path,
                 );
@@ -374,6 +414,14 @@ impl AppState {
                 Task::none()
             }
             Message::Runner(runner::Message::InstallLauncher) => {
+                if self.config.game_path.is_empty() {
+                    let title = self.t("Picker-SelectGameDir");
+                    return Task::perform(
+                        async move { helpers::ensure_game_path(&title).await },
+                        Message::GamePathResolved,
+                    );
+                }
+
                 self.runner_state = RunnerState::new(
                     RunnerStatus::FetchingVersion,
                     false,

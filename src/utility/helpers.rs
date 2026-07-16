@@ -177,7 +177,7 @@ pub fn run_launcher_headless() -> Result<(), String> {
     })
 }
 
-pub async fn get_config_async_with_title(title: String) -> AppConfig {
+pub async fn get_config_async_with_title(_title: String) -> AppConfig {
     let xdg_dirs = BaseDirectories::with_prefix("starcitizen-lug");
     _ = xdg_dirs.create_config_directory("");
 
@@ -188,20 +188,7 @@ pub async fn get_config_async_with_title(title: String) -> AppConfig {
         .unwrap();
 
     if !&config_path.exists() {
-        let mut game_path = env::var("WINEPREFIX").unwrap_or_default();
-
-        if game_path.is_empty() {
-            let picked = rfd::AsyncFileDialog::new()
-                .set_title(&title)
-                .pick_folder()
-                .await;
-
-            game_path = if let Some(folder) = picked {
-                folder.path().to_string_lossy().to_string()
-            } else {
-                String::new()
-            };
-        }
+        let game_path = env::var("WINEPREFIX").unwrap_or_default();
 
         let default_config = default_config(game_path);
 
@@ -219,4 +206,22 @@ pub async fn get_config_async_with_title(title: String) -> AppConfig {
 
     apply_config_to_environment(&config.settings, &config.environment);
     config.settings
+}
+
+// Resolve game dir interactively when it is empty
+// Checks `WINEPREFIX` first, then falls back to a folder picker dialog
+pub async fn ensure_game_path(title: &str) -> String {
+    let env_prefix = env::var("WINEPREFIX").unwrap_or_default();
+    if !env_prefix.is_empty() {
+        return env_prefix;
+    }
+
+    let picked = rfd::AsyncFileDialog::new()
+        .set_title(title)
+        .pick_folder()
+        .await;
+
+    picked
+        .map(|folder| folder.path().to_string_lossy().to_string())
+        .unwrap_or_default()
 }
