@@ -29,7 +29,7 @@ Regedit = Regedit
 Picker-SelectGameDir = Select your Star Citizen game directory
 
 Run-Launcher = Run Launcher
-Run-Launcher-Description = Install the RSI Launcher first if needed, then launch it from here.
+Run-Launcher-Description = Manage Installation
 Install-Launcher = Install Launcher
 Cancel = Cancel
 Done = Done

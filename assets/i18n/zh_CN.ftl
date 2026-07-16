@@ -29,7 +29,7 @@ Regedit = Regedit
 Picker-SelectGameDir = 选择你的星际公民游戏目录
 
 Run-Launcher = 运行启动器
-Run-Launcher-Description = 如有需要请先安装 RSI 启动器，然后从此处启动。
+Run-Launcher-Description = 管理安装
 Install-Launcher = 安装启动器
 Cancel = 取消
 Done = 完成
