@@ -1,5 +1,5 @@
 use crate::utility::*;
-use iced::widget::{button, column, container, text};
+use iced::widget::{button, column, container, row, text, Space};
 use std::sync::OnceLock;
 
 pub struct Maintenance {
@@ -52,39 +52,43 @@ pub fn view(app: &crate::gui::app::AppState) -> iced::Element<'_, Message> {
     static MAINTENANCE: OnceLock<Maintenance> = OnceLock::new();
     let maintenance = MAINTENANCE.get_or_init(|| Maintenance::default());
 
-    container(
-        column![
-            text(maintenance.rsi_maintenance)
-                .size(24)
-                .width(iced::Length::Fill),
-            button(maintenance.edit_config)
-                .on_press(Message::OpenCfg)
-                .width(iced::Length::Fill),
-            button(maintenance.open_game_directory)
-                .on_press(Message::OpenGameDir)
-                .width(iced::Length::Fill),
-            button(maintenance.winecfg)
-                .on_press(Message::Winecfg)
-                .width(iced::Length::Fill),
-            button(maintenance.control)
-                .on_press(Message::Control)
-                .width(iced::Length::Fill),
-            button(maintenance.regedit)
-                .on_press(Message::Regedit)
-                .width(iced::Length::Fill),
-            button(text(app.label_back()))
-                .on_press(Message::Back)
-                .width(iced::Length::Fill),
-            button(text(app.label_exit()))
-                .on_press(Message::Exit)
-                .width(iced::Length::Fill)
-        ]
-        .spacing(12)
-        .spacing(12)
-        .align_x(iced::Alignment::Center)
-        .padding(16),
-    )
-    .center_x(iced::Length::Fill)
-    .center_y(iced::Length::Fill)
+    let actions = column![
+        text(maintenance.rsi_maintenance)
+            .size(24)
+            .width(iced::Length::Fill),
+        button(maintenance.edit_config)
+            .on_press(Message::OpenCfg)
+            .width(iced::Length::Fill),
+        button(maintenance.open_game_directory)
+            .on_press(Message::OpenGameDir)
+            .width(iced::Length::Fill),
+        button(maintenance.winecfg)
+            .on_press(Message::Winecfg)
+            .width(iced::Length::Fill),
+        button(maintenance.control)
+            .on_press(Message::Control)
+            .width(iced::Length::Fill),
+        button(maintenance.regedit)
+            .on_press(Message::Regedit)
+            .width(iced::Length::Fill),
+        button(text(app.label_back()))
+            .on_press(Message::Back)
+            .width(iced::Length::Fill),
+        button(text(app.label_exit()))
+            .on_press(Message::Exit)
+            .width(iced::Length::Fill)
+    ]
+    .spacing(12)
+    .align_x(iced::Alignment::Center)
+    .padding(16)
+    .width(iced::Length::FillPortion(32));
+
+    row![
+        Space::new().width(iced::Length::FillPortion(1)),
+        container(actions).center_x(iced::Length::Fill),
+        Space::new().width(iced::Length::FillPortion(1)),
+    ]
+    .height(iced::Length::Fill)
+    .align_y(iced::Alignment::Center)
     .into()
 }
