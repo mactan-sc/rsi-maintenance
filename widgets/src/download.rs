@@ -40,11 +40,16 @@ pub(crate) fn download_inner(
 
         // Open the output file if a save path was provided.
         let mut file: Option<tokio::fs::File> = match &save_path {
-            Some(path) => Some(
+            Some(path) => Some({
+                if let Some(parent) = path.parent() {
+                    tokio::fs::create_dir_all(parent)
+                        .await
+                        .map_err(|e| Error::IoError(Arc::new(e)))?;
+                }
                 tokio::fs::File::create(path)
                     .await
-                    .map_err(|e| Error::IoError(Arc::new(e)))?,
-            ),
+                    .map_err(|e| Error::IoError(Arc::new(e)))?
+            }),
             None => None,
         };
 
